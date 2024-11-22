@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mood Tracker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .slider-container {
+            margin: 20px 0;
+        }
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        .export-btn {
+            background-color: #2196F3;
+            margin-top: 10px;
+        }
+        .export-btn:hover {
+            background-color: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Daily Mood Tracker</h2>
+        <div class="slider-container">
+            <div class="slider-label">
+                <span>Frustration</span>
+                <span id="frustrationValue">5</span>
+            </div>
+            <input type="range" id="frustration" min="0" max="10" value="5">
+        </div>
+        <div class="slider-container">
+            <div class="slider-label">
+                <span>Resignation</span>
+                <span id="resignationValue">5</span>
+            </div>
+            <input type="range" id="resignation" min="0" max="10" value="5">
+        </div>
+        <button onclick="saveMood()">Record Mood</button>
+    </div>
+
+    <div class="card">
+        <h2>Mood History</h2>
+        <div class="chart-container">
+            <canvas id="moodChart"></canvas>
+        </div>
+        <button class="export-btn" onclick="exportData()">Export Data</button>
+    </div>
+
+    <script>
+        let moodData = JSON.parse(localStorage.getItem('moodData')) || [];
+        let chart;
+
+        // Initialize sliders
+        const frustrationSlider = document.getElementById('frustration');
+        const resignationSlider = document.getElementById('resignation');
+        const frustrationValue = document.getElementById('frustrationValue');
+        const resignationValue = document.getElementById('resignationValue');
+
+        frustrationSlider.oninput = () => frustrationValue.textContent = frustrationSlider.value;
+        resignationSlider.oninput = () => resignationValue.textContent = resignationSlider.value;
+
+        function saveMood() {
+            const entry = {
+                date: new Date().toISOString().split('T')[0],
+                frustration: parseInt(frustrationSlider.value),
+                resignation: parseInt(resignationSlider.value)
+            };
+
+            // Check if we already have an entry for today
+            const todayEntryIndex = moodData.findIndex(item => item.date === entry.date);
+            if (todayEntryIndex !== -1) {
+                moodData[todayEntryIndex] = entry;
+            } else {
+                moodData.push(entry);
+            }
+
+            localStorage.setItem('moodData', JSON.stringify(moodData));
+            updateChart();
+
+            // Reset sliders
+            frustrationSlider.value = 5;
+            resignationSlider.value = 5;
+            frustrationValue.textContent = "5";
+            resignationValue.textContent = "5";
+
+            alert('Mood recorded!');
+        }
+
+        function updateChart() {
+            const ctx = document.getElementById('moodChart').getContext('2d');
+            
+            // Sort data by date
+            moodData.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // Destroy existing chart if it exists
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: moodData.map(entry => entry.date),
+                    datasets: [{
+                        label: 'Frustration',
+                        data: moodData.map(entry => entry.frustration),
+                        borderColor: 'rgb(255, 99, 132)',
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Resignation',
+                        data: moodData.map(entry => entry.resignation),
+                        borderColor: 'rgb(54, 162, 235)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 10
+                        }
+                    }
+                }
+            });
+        }
+
+        function exportData() {
+            const csvContent = "data:text/csv;charset=utf-8," 
+                + "Date,Frustration,Resignation\n"
+                + moodData.map(row => `${row.date},${row.frustration},${row.resignation}`).join("\n");
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "mood_data.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Initialize chart on load
+        updateChart();
+    </script>
+</body>
+</html>
+Last edited 10 minutes ago
